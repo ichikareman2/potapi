@@ -1,12 +1,16 @@
 let express = require('express')
-let app = express();
 let path = require('path')
 let formidable = require('formidable')
 let fs = require('fs')
+let cors = require('cors')
 
+
+
+let app = express();
 //config
 let conf = require('./config.js')
 
+app.use(cors());
 app.post('/upload', (req, res) => {
     let destination = conf.uploadDestination;
     let form = new formidable.IncomingForm();
@@ -35,13 +39,13 @@ app.post('/upload', (req, res) => {
         fs.rename(file.path, path.join(form.uploadDir, file.name), (err) => {
             if(err) {
                 fs.unlink(file.path)
-                res.end(`error \n {err}`)
+                res.end(`error \n ${err}`)
             }
         })
     });
 
     form.on('error', (err) => {
-        console.error('An error has occured: \n err')
+        console.error(`An error has occured: \n ${err}`)
     });
     form.on('end', () => {
         res.end('success')
@@ -49,7 +53,7 @@ app.post('/upload', (req, res) => {
     destinationCreated.then((v) => {
         form.parse(req)
     },(err) => {
-        res.end(`error \n {err}`)
+        res.end(`error \n ${err}`)
     })
 })
 
