@@ -72,50 +72,35 @@ app.get('/browse', (req, res) => {
     }).catch(err => {
         console.error(err)
     })
+})
 
-    // // let dirStat = dir.map(x => {
-    // //     let st = stat(path.join(destination, x))
-    // // })
-    // // let stats = Promise.all(dirStat)
-    // // res.send(stats)
-    // readdir(destination).then((files) => {
-    //     let stats = files.map((x, i) => {
-    //         let filepath = path.join(destination, x)
-    //         stat(filepath).then((fileStat) => {
+app.get('/download/:filename', (req, res) => {
+    let destination = conf.uploadDestination;
+    let filename = req.params.filename
+    let filePath = path.join(destination, filename)
 
+    res.download(filePath, (err) => {
+        if (err) {
+            console.error(`error happened: \n ${err}`)
+            res.status(404).end();
+        }
+    });
+})
 
-    //             fileStat.isFile()
-    //         })
-    //     })
-    // })
-
-
-
-    // fs.readdir(destination, (err, files) => {
-    //     let dirData = files.map((x, i) => {
-    //         let filepath = path.join(destination, x)
-    //         fs.stat(filepath, (err, y) => {
-
-    //         })
-    //     })
-    //     if (err) {
-    //         console.error(`An error has occured: \n ${err}`);
-    //     }
-    //     else {
-    //         res.send(dirData)
-    //     }
-    // })
+app.get('/test/:param', (req, res) => {
+    res.send(req.params)
 })
 
 function stat(filePath) {
     return new Promise((res, rej) => {
         fs.stat(filePath, (err, stat) => {
             if (err) rej(err);
-            else res({ 
-                isFile: stat.isFile(), 
+            else res({
+                isFile: stat.isFile(),
                 size: stat.size === 0 ? stat.size : stat.size / 1024,
-                file: path.basename(filePath), 
-                path: filePath })
+                file: path.basename(filePath),
+                path: filePath
+            })
         })
     })
 
