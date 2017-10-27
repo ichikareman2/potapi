@@ -57,11 +57,12 @@ app.post('/upload', (req, res) => {
     })
 })
 
-app.get('/browse', (req, res) => {
+app.get('/browse/:dirPath?', (req, res) => {
     let destination = conf.uploadDestination;
+    let dirPath = req.params.dirPath ? req.params.dirPath.replace(/\.\./g, "") : "";
+    let rootConPath = path.join(destination, dirPath)
 
-
-    let dir = readdir(destination);
+    let dir = readdir(rootConPath);
     dir.then((dirFiles) => {
         let dirStatPromises = dirFiles.map(x => {
             return stat(path.join(destination, x))
@@ -69,8 +70,15 @@ app.get('/browse', (req, res) => {
         Promise.all(dirStatPromises).then(dirStats => {
             res.send(dirStats)
         })
+        // .catch(err => console.)
     }).catch(err => {
-        console.error(err)
+        if (err.code === 'ENOTDIR') {
+            res.status(400).end()
+        }
+        else {
+            console.error(err)
+            res.status(500).end();
+        }
     })
 })
 
@@ -87,8 +95,15 @@ app.get('/download/:filename', (req, res) => {
     });
 })
 
-app.get('/test/:param', (req, res) => {
-    res.send(req.params)
+app.get('/test/:dirPath?', (req, res) => {
+    let destination = conf.uploadDestination;
+    let dirPath = req.params.dirPath ? req.params.dirPath.replace(/\.\./g, "") : "";
+    let rootConPath = path.join(destination, dirPath)
+
+    res.send({
+        rootConPath,
+        dirPath
+    })
 })
 
 function stat(filePath) {
