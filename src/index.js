@@ -65,12 +65,12 @@ app.get('/browse/:dirPath?', (req, res) => {
     let dir = readdir(rootConPath);
     dir.then((dirFiles) => {
         let dirStatPromises = dirFiles.map(x => {
-            return stat(path.join(destination, x))
+            return stat(path.join(rootConPath, x))
         })
         Promise.all(dirStatPromises).then(dirStats => {
             res.send(dirStats)
         })
-        // .catch(err => console.)
+        .catch(err => console.log(err))
     }).catch(err => {
         if (err.code === 'ENOTDIR') {
             res.status(400).end()
