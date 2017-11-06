@@ -14,8 +14,12 @@ let app = express();
 let conf = require('./config.js')
 
 app.use(cors());
-app.post('/upload', (req, res) => {
+app.post('/upload/:dirPath?', (req, res) => {
+    
     let destination = conf.uploadDestination;
+    let dirPath = req.params.dirPath ? req.params.dirPath.replace(/\.\./g, "") : "";
+    let rootConPath = path.join(destination, dirPath)
+
     let form = new formidable.IncomingForm();
     form.multiples = true;
     // form.uploadDir = path.join(__dirname, '/uploads');
@@ -34,7 +38,7 @@ app.post('/upload', (req, res) => {
         })
     })
 
-    form.uploadDir = destination;
+    form.uploadDir = rootConPath;
     form.on('file', (field, file) => {
         fs.rename(file.path, path.join(form.uploadDir, file.name), (err) => {
             if (err) {
