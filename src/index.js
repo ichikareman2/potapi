@@ -15,7 +15,7 @@ let conf = require('./config.js')
 
 app.use(cors());
 app.post('/upload/:dirPath?', (req, res) => {
-    
+
     let destination = conf.uploadDestination;
     let dirPath = req.params.dirPath ? req.params.dirPath.replace(/\.\./g, "") : "";
     let rootConPath = path.join(destination, dirPath)
@@ -74,9 +74,10 @@ app.get('/browse/:dirPath?', (req, res) => {
         Promise.all(dirStatPromises).then(dirStats => {
             res.send(dirStats)
         })
-        .catch(err => console.log(err))
+            .catch(err => console.log(err))
     }).catch(err => {
         if (err.code === 'ENOTDIR') {
+            console.error(err)
             res.status(400).end()
         }
         else {
@@ -125,6 +126,19 @@ function stat(filePath) {
 
 }
 
+function preStartup(startup) {
+    return new Promise((res, rej) => {
+        fs.mkdir(conf.uploadDestination, err => {
+            if (err) {
+                if (err.code !== 'EEXIST') {
+                    return rej(err)
+                }
+            }
+            return res()
+        })
+    })
+
+}
 // function readdir (dir) {
 //     return new Promise((res,rej) => {
 //         fs.readdir(dir, (err, files) => {
@@ -133,7 +147,13 @@ function stat(filePath) {
 //         })
 //     })
 // }
+let prestart = preStartup()
 
-app.listen(3000, () => {
-    console.log('Server listens to 3000')
+prestart.then(() => {
+    app.listen(3000, () => {
+        console.log(`destination set to ${conf.uploadDestination}`)
+        console.log('Server listens to 3000')
+    })
+}, err => {
+    console.error(err)
 })
