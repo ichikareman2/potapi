@@ -1,5 +1,6 @@
 let express = require('express')
 let path = require('path')
+let os = require('os')
 let formidable = require('formidable')
 let fs = require('fs')
 let cors = require('cors')
@@ -13,34 +14,37 @@ let app = express();
 //config
 let conf = require('./config.js')
 
+const TEMPDIRNAME = 'pot-temp'
+
 app.use(cors());
 app.post('/upload/:dirPath?', (req, res) => {
 
     let destination = conf.uploadDestination;
     let dirPath = req.params.dirPath ? req.params.dirPath.replace(/\.\./g, "") : "";
     let rootConPath = path.join(destination, dirPath)
+    let rootConTemp = path.join(destination, TEMPDIRNAME)
 
     let form = new formidable.IncomingForm();
     form.multiples = true;
     // form.uploadDir = path.join(__dirname, '/uploads');
 
-    let destinationCreated = new Promise((res, rej) => {
-        fs.mkdir(destination, (err) => {
-            if (err) {
-                if (err.code === 'EEXIST') {
-                    res();
-                }
-                else {
-                    rej();
-                }
-            }
-            res()
-        })
-    })
+    // let destinationCreated = new Promise((res, rej) => {
+    //     fs.mkdir(destination, (err) => {
+    //         if (err) {
+    //             if (err.code === 'EEXIST') {
+    //                 res();
+    //             }
+    //             else {
+    //                 rej();
+    //             }
+    //         }
+    //         res()
+    //     })
+    // })
 
-    form.uploadDir = rootConPath;
+    form.uploadDir = rootConTemp;
     form.on('file', (field, file) => {
-        fs.rename(file.path, path.join(form.uploadDir, file.name), (err) => {
+        fs.rename(file.path, path.join(rootConPath, file.name), (err) => {
             if (err) {
                 fs.unlink(file.path)
                 res.end(`error \n ${err}`)
@@ -54,11 +58,12 @@ app.post('/upload/:dirPath?', (req, res) => {
     form.on('end', () => {
         res.end('success')
     });
-    destinationCreated.then((v) => {
-        form.parse(req)
-    }, (err) => {
-        res.end(`error \n ${err}`)
-    })
+    form.parse(req)
+    // destinationCreated.then((v) => {
+    //     form.parse(req)
+    // }, (err) => {
+    //     res.end(`error \n ${err}`)
+    // })
 })
 
 app.get('/browse/:dirPath?', (req, res) => {
@@ -69,7 +74,7 @@ app.get('/browse/:dirPath?', (req, res) => {
     let dir = readdir(rootConPath);
     dir.then((dirFiles) => {
         let dirStatPromises = dirFiles.map(x => {
-            return stat(path.join(rootConPath, x))
+            return stat(rootConPath, x)
         })
         Promise.all(dirStatPromises).then(dirStats => {
             res.send(dirStats)
@@ -111,15 +116,15 @@ app.get('/test/:dirPath?', (req, res) => {
     })
 })
 
-function stat(filePath) {
+function stat(pathString, fileName) {
     return new Promise((res, rej) => {
+        let filePath = path.join(pathString, fileName)
         fs.stat(filePath, (err, stat) => {
             if (err) rej(err);
             else res({
                 isFile: stat.isFile(),
                 size: stat.size === 0 ? stat.size : stat.size / 1024,
-                file: path.basename(filePath),
-                path: filePath
+                file: fileName
             })
         })
     })
@@ -127,7 +132,7 @@ function stat(filePath) {
 }
 
 function preStartup(startup) {
-    return new Promise((res, rej) => {
+    let createRoot = new Promise((res, rej) => {
         fs.mkdir(conf.uploadDestination, err => {
             if (err) {
                 if (err.code !== 'EEXIST') {
@@ -136,8 +141,21 @@ function preStartup(startup) {
             }
             return res()
         })
-    })
-
+    });
+    let createTemporaryFilesFolder = createRoot.then((res) => {
+        return new Promise((res, rej) => {
+            let tempDirName = path.join(conf.uploadDestination, TEMPDIRNAME)
+            fs.mkdir(tempDirName, err => {
+                if (err) {
+                    if (err.code !== 'EEXIST') {
+                        return rej(err)
+                    }
+                }
+                return res()
+            })
+        })
+    });
+    return [createRoot, createTemporaryFilesFolder]
 }
 // function readdir (dir) {
 //     return new Promise((res,rej) => {
@@ -149,7 +167,8 @@ function preStartup(startup) {
 // }
 let prestart = preStartup()
 
-prestart.then(() => {
+Promise.all(prestart)
+.then((results) => {
     app.listen(3000, () => {
         console.log(`destination set to ${conf.uploadDestination}`)
         console.log('Server listens to 3000')
