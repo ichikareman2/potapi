@@ -18,31 +18,16 @@ const TEMPDIRNAME = 'pot-temp'
 
 app.use(cors());
 app.post('/upload/:dirPath?', (req, res) => {
-
     let destination = conf.uploadDestination;
     let dirPath = req.params.dirPath ? req.params.dirPath.replace(/\.\./g, "") : "";
     let rootConPath = path.join(destination, dirPath)
-    let rootConTemp = path.join(destination, TEMPDIRNAME)
+    // let rootConTemp = path.join(destination, TEMPDIRNAME)
 
     let form = new formidable.IncomingForm();
     form.multiples = true;
     // form.uploadDir = path.join(__dirname, '/uploads');
 
-    // let destinationCreated = new Promise((res, rej) => {
-    //     fs.mkdir(destination, (err) => {
-    //         if (err) {
-    //             if (err.code === 'EEXIST') {
-    //                 res();
-    //             }
-    //             else {
-    //                 rej();
-    //             }
-    //         }
-    //         res()
-    //     })
-    // })
-
-    form.uploadDir = rootConTemp;
+    // form.uploadDir = rootConTemp;
     form.on('file', (field, file) => {
         fs.rename(file.path, path.join(rootConPath, file.name), (err) => {
             if (err) {
@@ -53,6 +38,7 @@ app.post('/upload/:dirPath?', (req, res) => {
     });
 
     form.on('error', (err) => {
+        res.status(500).end();
         console.error(`An error has occured: \n ${err}`)
     });
     form.on('end', () => {
@@ -142,20 +128,21 @@ function preStartup(startup) {
             return res()
         })
     });
-    let createTemporaryFilesFolder = createRoot.then((res) => {
-        return new Promise((res, rej) => {
-            let tempDirName = path.join(conf.uploadDestination, TEMPDIRNAME)
-            fs.mkdir(tempDirName, err => {
-                if (err) {
-                    if (err.code !== 'EEXIST') {
-                        return rej(err)
-                    }
-                }
-                return res()
-            })
-        })
-    });
-    return [createRoot, createTemporaryFilesFolder]
+    // let createTemporaryFilesFolder = createRoot.then((res) => {
+    //     return new Promise((res, rej) => {
+    //         let tempDirName = path.join(conf.uploadDestination, TEMPDIRNAME)
+    //         fs.mkdir(tempDirName, err => {
+    //             if (err) {
+    //                 if (err.code !== 'EEXIST') {
+    //                     return rej(err)
+    //                 }
+    //             }
+    //             return res()
+    //         })
+    //     })
+    // });
+    // return [createRoot, createTemporaryFilesFolder]
+    return [createRoot]
 }
 // function readdir (dir) {
 //     return new Promise((res,rej) => {
